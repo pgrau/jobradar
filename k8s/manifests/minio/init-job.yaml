@@ -1,0 +1,27 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-buckets-init
+  namespace: jobradar
+  labels:
+    app.kubernetes.io/part-of: jobradar
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mc
+          image: minio/mc:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Waiting for MinIO..."
+              until mc alias set local http://minio:9000 minioadmin jobradar_local; do
+                sleep 5
+              done
+              echo "Creating buckets..."
+              mc mb --ignore-existing local/jobradar-cvs
+              mc mb --ignore-existing local/langfuse
+              echo "Buckets created:"
+              mc ls local

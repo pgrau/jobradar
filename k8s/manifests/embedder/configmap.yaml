@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: embedder-config
+  namespace: jobradar
+  labels:
+    app: embedder
+    app.kubernetes.io/name: embedder
+    app.kubernetes.io/part-of: jobradar
+data:
+  ENV: "local"
+  EMBEDDER_GRPC_PORT: "50051"
+
+  # LiteLLM
+  LITELLM_BASE_URL: "http://litellm:4000"
+
+  # Embedding model — override in values.hetzner.yaml for Gemini
+  OLLAMA_EMBED_MODEL: "mxbai-embed-large"
+  GEMINI_EMBED_DIMENSIONS: "1024"
+
+  # Valkey
+  VALKEY_ADDR: "valkey:6379"
+  VALKEY_DB: "0"
+  VALKEY_LLM_CACHE_TTL: "24h"
+
+  # OpenTelemetry
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://alloy:4317"
+  OTEL_SERVICE_NAMESPACE: "jobradar"

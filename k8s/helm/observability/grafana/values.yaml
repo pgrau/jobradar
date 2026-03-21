@@ -1,0 +1,33 @@
+adminPassword: admin
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+persistence:
+  enabled: false
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Tempo
+        type: tempo
+        url: http://tempo:3100
+        isDefault: false
+      - name: Loki
+        type: loki
+        url: http://loki:3100
+        isDefault: false
+      - name: Prometheus
+        type: prometheus
+        url: http://prometheus-server
+        isDefault: true
+
+grafana.ini:
+  feature_toggles:
+    enable: traceToLogs traceToMetrics

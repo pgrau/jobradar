@@ -1,0 +1,37 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/berriai/litellm
+  tag: "main-latest"
+  pullPolicy: IfNotPresent
+
+envVars:
+  LITELLM_MASTER_KEY: "sk-jobradar"
+  LITELLM_LOG: "INFO"
+
+proxy_config:
+  model_list:
+    - model_name: default
+      litellm_params:
+        model: ollama/mistral:7b
+        api_base: http://host.docker.internal:11434
+
+    - model_name: embeddings
+      litellm_params:
+        model: ollama/mxbai-embed-large
+        api_base: http://host.docker.internal:11434
+
+  general_settings:
+    master_key: sk-jobradar
+
+service:
+  type: ClusterIP
+  port: 4000
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 512Mi
+  limits:
+    cpu: 500m
+    memory: 2Gi

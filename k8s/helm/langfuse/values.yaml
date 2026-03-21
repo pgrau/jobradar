@@ -1,0 +1,58 @@
+langfuse:
+  salt:
+    value: "local-salt-changeme-32chars-min"
+  nextauth:
+    url: "http://localhost:3101"
+    secret:
+      value: "local-nextauth-secret-changeme-x"
+  telemetryEnabled: false
+  additionalEnv:
+    - name: DATABASE_URL
+      value: "postgresql://jobradar:jobradar_local@postgresql:5432/langfuse"
+    - name: DIRECT_URL
+      value: "postgresql://jobradar:jobradar_local@postgresql:5432/langfuse"
+
+postgresql:
+  deploy: false
+  auth:
+    username: jobradar
+    password: jobradar_local
+    database: langfuse
+    host: postgresql
+
+redis:
+  deploy: false
+  host: valkey
+  port: 6379
+  auth:
+    password: ""
+
+clickhouse:
+  deploy: true
+  auth:
+    password: "langfuse_local"
+
+s3:
+  deploy: false
+  bucket: "langfuse"
+  region: "us-east-1"
+  endpoint: "http://minio:9000"
+  forcePathStyle: true
+  accessKeyId:
+    value: "minioadmin"
+  secretAccessKey:
+    value: "jobradar_local"
+  eventUpload:
+    prefix: "events/"
+  batchExport:
+    prefix: "exports/"
+  mediaUpload:
+    prefix: "media/"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

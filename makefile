@@ -1,27 +1,24 @@
-# ==============================================================================
+makefile# ==============================================================================
 # JobRadar Makefile
 # ==============================================================================
 
 .DEFAULT_GOAL := help
-.PHONY: help cluster-up cluster-down proto build images-build images-load-kind \
-        deploy-infra deploy deploy-service undeploy logs port-forward \
-        test test-unit test-integration lint fmt vet tidy clean
+.PHONY: help cluster-up cluster-down cluster-status proto proto-clean build \
+        build-service deploy-infra deploy-observability dev dev-run \
+        dev-service dev-delete test test-unit test-integration \
+        test-coverage test-service lint fmt vet tidy clean
 
 # ------------------------------------------------------------------------------
 # Configuration
 # ------------------------------------------------------------------------------
 include .env
--include .env.$(ENV)
 export
 
-REGISTRY   := ghcr.io/pgrau/jobradar
-TAG        ?= latest
-ENV        ?= local
-NAMESPACE  := jobradar
-CLUSTER    := jobradar
+ENV       ?= local
+NAMESPACE := jobradar
+CLUSTER   := jobradar
 
 SERVICES := auth fetcher scorer llm-service rag-service embedder api-gateway mcp-server a2a-agent
-FRONTEND := apps/frontend
 
 # ------------------------------------------------------------------------------
 # Help
@@ -72,9 +69,9 @@ proto-clean: ## Remove generated protobuf files
 	@echo "✓ Generated proto files removed"
 
 # ------------------------------------------------------------------------------
-# Build
+# Build (local, outside K8s — optional, requires Go installed)
 # ------------------------------------------------------------------------------
-build: proto ## Build all Go services
+build: ## Build all Go services locally
 	@echo "→ Building Go services..."
 	@for svc in $(SERVICES); do \
 		echo "  building $$svc..."; \
@@ -82,163 +79,116 @@ build: proto ## Build all Go services
 	done
 	@echo "✓ All services built"
 
-build-service: proto ## Build a single service (make build-service SVC=fetcher)
-	@[ -n "$(SVC)" ] || (echo "✗ SVC is required. Usage: make build-service SVC=fetcher" && exit 1)
-	@echo "→ Building $(SVC)..."
+build-service: ## Build a single service locally (make build-service SVC=embedder)
+	@[ -n "$(SVC)" ] || (echo "✗ SVC is required. Usage: make build-service SVC=embedder" && exit 1)
 	go build -o bin/$(SVC) ./services/$(SVC)/cmd/...
 	@echo "✓ $(SVC) built"
 
 # ------------------------------------------------------------------------------
-# Docker images
+# Infrastructure
 # ------------------------------------------------------------------------------
-images-build: ## Build Docker images for all services
-	@echo "→ Building Docker images (ENV=$(ENV))..."
-	@for svc in $(SERVICES); do \
-		echo "  building $(REGISTRY)/$$svc:$(TAG)..."; \
-		docker build \
-			--build-arg SERVICE=$$svc \
-			--build-arg ENV=$(ENV) \
-			-t $(REGISTRY)/$$svc:$(TAG) \
-			-f services/$$svc/Dockerfile .; \
-	done
-	docker build \
-		-t $(REGISTRY)/frontend:$(TAG) \
-		-f $(FRONTEND)/Dockerfile $(FRONTEND)/
-	@echo "✓ All images built"
-
-images-build-service: ## Build a single service image (make images-build-service SVC=fetcher)
-	@[ -n "$(SVC)" ] || (echo "✗ SVC is required. Usage: make images-build-service SVC=fetcher" && exit 1)
-	docker build \
-		--build-arg SERVICE=$(SVC) \
-		--build-arg ENV=$(ENV) \
-		-t $(REGISTRY)/$(SVC):$(TAG) \
-		-f services/$(SVC)/Dockerfile .
-	@echo "✓ $(SVC) image built"
-
-images-load-kind: ## Load all images into kind cluster
-	@echo "→ Loading images into kind cluster '$(CLUSTER)'..."
-	@for svc in $(SERVICES); do \
-		echo "  loading $(REGISTRY)/$$svc:$(TAG)..."; \
-		kind load docker-image $(REGISTRY)/$$svc:$(TAG) --name $(CLUSTER); \
-	done
-	kind load docker-image $(REGISTRY)/frontend:$(TAG) --name $(CLUSTER)
-	@echo "✓ All images loaded"
-
-images-push: ## Push all images to registry (ghcr.io)
-	@echo "→ Pushing images to $(REGISTRY)..."
-	@for svc in $(SERVICES); do \
-		docker push $(REGISTRY)/$$svc:$(TAG); \
-	done
-	docker push $(REGISTRY)/frontend:$(TAG)
-	@echo "✓ All images pushed"
-
-# ------------------------------------------------------------------------------
-# Deploy
-# ------------------------------------------------------------------------------
-deploy-infra: ## Deploy infrastructure (Kafka, PostgreSQL, Valkey, MinIO, LiteLLM, Langfuse, LGTM)
+deploy-infra: ## Deploy infrastructure (PostgreSQL, Kafka, Valkey, MinIO, LiteLLM, Langfuse, LGTM)
 	@echo "→ Deploying infrastructure (ENV=$(ENV))..."
 	helm repo add bitnami https://charts.bitnami.com/bitnami || true
 	helm repo add grafana https://grafana.github.io/helm-charts || true
 	helm repo add prometheus-community https://prometheus-community.github.io/helm-charts || true
+	helm repo add langfuse https://langfuse.github.io/langfuse-k8s || true
 	helm repo update
-	helm upgrade --install postgresql bitnami/postgresql -n $(NAMESPACE) \
+	helm upgrade --install postgresql bitnami/postgresql \
+		-n $(NAMESPACE) \
 		-f k8s/helm/postgresql/values.yaml \
-		-f k8s/helm/postgresql/values.$(ENV).yaml \
-		--set auth.password=$(POSTGRES_PASSWORD)
-	helm upgrade --install kafka bitnami/kafka -n $(NAMESPACE) \
-		-f k8s/helm/kafka/values.yaml \
-		-f k8s/helm/kafka/values.$(ENV).yaml
-	helm upgrade --install valkey bitnami/valkey -n $(NAMESPACE) \
-		-f k8s/helm/valkey/values.yaml \
-		-f k8s/helm/valkey/values.$(ENV).yaml
-	helm upgrade --install minio bitnami/minio -n $(NAMESPACE) \
-		-f k8s/helm/minio/values.yaml \
-		-f k8s/helm/minio/values.$(ENV).yaml \
-		--set auth.rootPassword=$(MINIO_SECRET_KEY)
-	helm upgrade --install litellm k8s/helm/litellm -n $(NAMESPACE) \
-		-f k8s/helm/litellm/values.yaml \
-		-f k8s/helm/litellm/values.$(ENV).yaml
-	helm upgrade --install langfuse k8s/helm/langfuse -n $(NAMESPACE) \
-		-f k8s/helm/langfuse/values.yaml \
-		-f k8s/helm/langfuse/values.$(ENV).yaml
+		--set auth.password=$(POSTGRES_PASSWORD) \
+		--set global.security.allowInsecureImages=true
+	kubectl apply -f k8s/manifests/kafka/ -n $(NAMESPACE)
+	helm upgrade --install valkey bitnami/valkey \
+		-n $(NAMESPACE) \
+		-f k8s/helm/valkey/values.yaml
+	kubectl apply -f k8s/manifests/minio/ -n $(NAMESPACE)
+	helm upgrade --install litellm oci://ghcr.io/berriai/litellm-helm \
+		-n $(NAMESPACE) \
+		-f k8s/helm/litellm/values.yaml
+	helm upgrade --install langfuse langfuse/langfuse \
+		-n $(NAMESPACE) \
+		-f k8s/helm/langfuse/values.yaml
 	$(MAKE) deploy-observability
 	@echo "✓ Infrastructure deployed"
 
 deploy-observability: ## Deploy LGTM observability stack
 	@echo "→ Deploying observability stack..."
-	helm upgrade --install alloy grafana/alloy -n $(NAMESPACE) \
-		-f k8s/helm/observability/alloy/values.yaml \
-		-f k8s/helm/observability/alloy/values.$(ENV).yaml
-	helm upgrade --install tempo grafana/tempo -n $(NAMESPACE) \
+	helm upgrade --install alloy grafana/alloy \
+		-n $(NAMESPACE) \
+		-f k8s/helm/observability/alloy/values.yaml
+	helm upgrade --install tempo grafana/tempo \
+		-n $(NAMESPACE) \
 		-f k8s/helm/observability/tempo/values.yaml
-	helm upgrade --install loki grafana/loki -n $(NAMESPACE) \
+	helm upgrade --install loki grafana/loki \
+		-n $(NAMESPACE) \
 		-f k8s/helm/observability/loki/values.yaml
-	helm upgrade --install prometheus prometheus-community/prometheus -n $(NAMESPACE) \
+	helm upgrade --install prometheus prometheus-community/prometheus \
+		-n $(NAMESPACE) \
 		-f k8s/helm/observability/prometheus/values.yaml
-	helm upgrade --install grafana grafana/grafana -n $(NAMESPACE) \
+	helm upgrade --install grafana grafana/grafana \
+		-n $(NAMESPACE) \
 		-f k8s/helm/observability/grafana/values.yaml
 	@echo "✓ Observability stack deployed"
 
-deploy: ## Deploy all JobRadar services
-	@echo "→ Deploying services (ENV=$(ENV))..."
-	@for svc in $(SERVICES); do \
-		echo "  deploying $$svc..."; \
-		kubectl apply -f k8s/manifests/$$svc/ -n $(NAMESPACE); \
-	done
-	kubectl apply -f k8s/manifests/frontend/ -n $(NAMESPACE)
-	@echo "✓ All services deployed"
-
-deploy-service: ## Deploy a single service (make deploy-service SVC=fetcher)
-	@[ -n "$(SVC)" ] || (echo "✗ SVC is required. Usage: make deploy-service SVC=fetcher" && exit 1)
-	@echo "→ Deploying $(SVC)..."
-	kubectl apply -f k8s/manifests/$(SVC)/ -n $(NAMESPACE)
-	@echo "✓ $(SVC) deployed"
-
-undeploy: ## Remove all JobRadar services (keeps infrastructure)
-	@echo "→ Removing services..."
-	@for svc in $(SERVICES); do \
-		kubectl delete -f k8s/manifests/$$svc/ -n $(NAMESPACE) --ignore-not-found; \
-	done
-	kubectl delete -f k8s/manifests/frontend/ -n $(NAMESPACE) --ignore-not-found
-	@echo "✓ Services removed"
-
-rollout-restart: ## Restart all deployments (picks up new images)
-	@echo "→ Restarting deployments..."
-	@for svc in $(SERVICES); do \
-		kubectl rollout restart deployment/$$svc -n $(NAMESPACE); \
-	done
-	kubectl rollout restart deployment/frontend -n $(NAMESPACE)
-	@echo "✓ Rollout triggered"
-
-rollout-restart-service: ## Restart a single deployment (make rollout-restart-service SVC=fetcher)
-	@[ -n "$(SVC)" ] || (echo "✗ SVC is required. Usage: make rollout-restart-service SVC=fetcher" && exit 1)
-	kubectl rollout restart deployment/$(SVC) -n $(NAMESPACE)
-
 # ------------------------------------------------------------------------------
-# Development helpers
+# Development — Skaffold
 # ------------------------------------------------------------------------------
-port-forward: ## Forward all service ports to localhost
-	@echo "→ Forwarding ports (background)..."
-	kubectl port-forward svc/api-gateway  8080:8080 -n $(NAMESPACE) &
-	kubectl port-forward svc/mcp-server   8090:8090 -n $(NAMESPACE) &
-	kubectl port-forward svc/a2a-agent    8091:8091 -n $(NAMESPACE) &
-	kubectl port-forward svc/frontend     5173:80   -n $(NAMESPACE) &
-	kubectl port-forward svc/grafana      3100:3000 -n $(NAMESPACE) &
-	kubectl port-forward svc/langfuse     3101:3000 -n $(NAMESPACE) &
-	kubectl port-forward svc/postgresql   5432:5432 -n $(NAMESPACE) &
-	kubectl port-forward svc/kafka        9092:9092 -n $(NAMESPACE) &
-	kubectl port-forward svc/valkey       6379:6379 -n $(NAMESPACE) &
-	kubectl port-forward svc/minio        9000:9000 -n $(NAMESPACE) &
-	kubectl port-forward svc/litellm      4000:4000 -n $(NAMESPACE) &
+dev: cluster-up deploy-infra ## Full local setup + deploy all services (watch mode)
+	@echo "→ Starting Skaffold dev..."
+	@echo ""
+	@echo "  Frontend:  http://localhost:5173"
+	@echo "  API:       http://localhost:8080"
+	@echo "  MCP:       http://localhost:8090/mcp"
+	@echo "  Grafana:   http://localhost:3100"
+	@echo "  Langfuse:  http://localhost:3101"
+	@echo ""
+	skaffold dev --profile local
+
+dev-run: ## Deploy all services once without watch mode
+	skaffold run --profile local
+
+dev-service: ## Watch and redeploy a single service (make dev-service SVC=embedder)
+	@[ -n "$(SVC)" ] || (echo "✗ SVC is required. Usage: make dev-service SVC=embedder" && exit 1)
+	skaffold dev --profile local --build-artifacts $(SVC)
+
+port-forward-infra: ## Forward all infrastructure ports to localhost
+	@echo "→ Forwarding infrastructure ports..."
+	kubectl port-forward svc/postgresql        5432:5432  -n $(NAMESPACE) &
+	kubectl port-forward svc/kafka             9092:9092  -n $(NAMESPACE) &
+	kubectl port-forward svc/valkey            6379:6379  -n $(NAMESPACE) &
+	kubectl port-forward svc/minio             9000:9000  -n $(NAMESPACE) &
+	kubectl port-forward svc/minio             9001:9001  -n $(NAMESPACE) &
+	kubectl port-forward svc/litellm           4000:4000  -n $(NAMESPACE) &
+	kubectl port-forward svc/langfuse-web      3101:3000  -n $(NAMESPACE) &
+	kubectl port-forward svc/grafana           3100:3000  -n $(NAMESPACE) &
+	kubectl port-forward svc/tempo             3200:3200  -n $(NAMESPACE) &
+	kubectl port-forward svc/loki              3102:3100  -n $(NAMESPACE) &
+	kubectl port-forward svc/prometheus-server 9090:9090  -n $(NAMESPACE) &
+	kubectl port-forward svc/alloy             4317:4317  -n $(NAMESPACE) &
+	@echo ""
+	@echo "  PostgreSQL:  localhost:5432"
+	@echo "  Kafka:       localhost:9092"
+	@echo "  Valkey:      localhost:6379"
+	@echo "  MinIO API:   http://localhost:9000"
+	@echo "  MinIO UI:    http://localhost:9001  (minioadmin / jobradar_local)"
+	@echo "  LiteLLM:     http://localhost:4000  (Bearer sk-jobradar)"
+	@echo "  Langfuse:    http://localhost:3101  (create on first access)"
+	@echo "  Grafana:     http://localhost:3100  (admin / admin)"
+	@echo "  Tempo:       http://localhost:3200"
+	@echo "  Loki:        http://localhost:3102"
+	@echo "  Prometheus:  http://localhost:9090"
+	@echo "  OTel/Alloy:  localhost:4317"
+	@echo ""
 	@echo "✓ Ports forwarded — use 'make port-forward-stop' to stop"
 
 port-forward-stop: ## Stop all port-forwards
 	pkill -f "kubectl port-forward" || true
 	@echo "✓ Port forwards stopped"
 
-logs: ## Tail logs for a service (make logs SVC=fetcher)
-	@[ -n "$(SVC)" ] || (echo "✗ SVC is required. Usage: make logs SVC=fetcher" && exit 1)
-	kubectl logs -f deployment/$(SVC) -n $(NAMESPACE)
+dev-delete: ## Remove all Skaffold-managed resources
+	skaffold delete --profile local
 
 # ------------------------------------------------------------------------------
 # Testing
@@ -247,7 +197,7 @@ test: test-unit test-integration ## Run all tests
 
 test-unit: ## Run unit tests
 	@echo "→ Running unit tests..."
-	go test -v -race -count=1 ./services/.../internal/... ./services/.../domain/...
+	go test -v -race -count=1 ./services/.../internal/...
 	@echo "✓ Unit tests passed"
 
 test-integration: ## Run integration tests (requires running cluster)
@@ -260,8 +210,8 @@ test-coverage: ## Run tests with coverage report
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "✓ Coverage report: coverage.html"
 
-test-service: ## Run tests for a single service (make test-service SVC=fetcher)
-	@[ -n "$(SVC)" ] || (echo "✗ SVC is required. Usage: make test-service SVC=fetcher" && exit 1)
+test-service: ## Run tests for a single service (make test-service SVC=embedder)
+	@[ -n "$(SVC)" ] || (echo "✗ SVC is required. Usage: make test-service SVC=embedder" && exit 1)
 	go test -v -race -count=1 ./services/$(SVC)/...
 
 # ------------------------------------------------------------------------------
@@ -289,20 +239,3 @@ clean: ## Remove build artifacts
 	rm -f coverage.out coverage.html
 	$(MAKE) proto-clean
 	@echo "✓ Clean done"
-
-# ------------------------------------------------------------------------------
-# Full workflows
-# ------------------------------------------------------------------------------
-dev: cluster-up deploy-infra images-build images-load-kind deploy port-forward ## Full local dev setup
-	@echo ""
-	@echo "✓ JobRadar running locally"
-	@echo ""
-	@echo "  Frontend:    http://localhost:5173"
-	@echo "  API:         http://localhost:8080"
-	@echo "  MCP:         http://localhost:8090/mcp"
-	@echo "  Grafana:     http://localhost:3100"
-	@echo "  Langfuse:    http://localhost:3101"
-	@echo ""
-
-redeploy-service: images-build-service images-load-kind deploy-service rollout-restart-service ## Rebuild and redeploy a single service (make redeploy-service SVC=fetcher)
-	@echo "✓ $(SVC) redeployed"

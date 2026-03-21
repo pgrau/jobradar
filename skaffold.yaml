@@ -1,0 +1,156 @@
+apiVersion: skaffold/v4beta13
+kind: Config
+metadata:
+  name: jobradar
+
+# ==============================================================================
+# Build
+# ==============================================================================
+build:
+  local:
+    push: false           # load into kind, no push to registry
+    useBuildkit: true
+  tagPolicy:
+    sha256: {}            # deterministic tags based on content hash
+  artifacts:
+    - image: ghcr.io/pgrau/jobradar/auth
+      context: .
+      docker:
+        dockerfile: services/auth/Dockerfile
+
+    - image: ghcr.io/pgrau/jobradar/fetcher
+      context: .
+      docker:
+        dockerfile: services/fetcher/Dockerfile
+
+    - image: ghcr.io/pgrau/jobradar/scorer
+      context: .
+      docker:
+        dockerfile: services/scorer/Dockerfile
+
+    - image: ghcr.io/pgrau/jobradar/llm-service
+      context: .
+      docker:
+        dockerfile: services/llm-service/Dockerfile
+
+    - image: ghcr.io/pgrau/jobradar/rag-service
+      context: .
+      docker:
+        dockerfile: services/rag-service/Dockerfile
+
+    - image: ghcr.io/pgrau/jobradar/embedder
+      context: .
+      docker:
+        dockerfile: services/embedder/Dockerfile
+
+    - image: ghcr.io/pgrau/jobradar/api-gateway
+      context: .
+      docker:
+        dockerfile: services/api-gateway/Dockerfile
+
+    - image: ghcr.io/pgrau/jobradar/mcp-server
+      context: .
+      docker:
+        dockerfile: services/mcp-server/Dockerfile
+
+    - image: ghcr.io/pgrau/jobradar/a2a-agent
+      context: .
+      docker:
+        dockerfile: services/a2a-agent/Dockerfile
+
+    - image: ghcr.io/pgrau/jobradar/frontend
+      context: apps/frontend
+      docker:
+        dockerfile: apps/frontend/Dockerfile
+
+# ==============================================================================
+# Manifests
+# ==============================================================================
+manifests:
+  rawYaml:
+    - k8s/manifests/auth/*.yaml
+    - k8s/manifests/fetcher/*.yaml
+    - k8s/manifests/scorer/*.yaml
+    - k8s/manifests/llm-service/*.yaml
+    - k8s/manifests/rag-service/*.yaml
+    - k8s/manifests/embedder/*.yaml
+    - k8s/manifests/api-gateway/*.yaml
+    - k8s/manifests/mcp-server/*.yaml
+    - k8s/manifests/a2a-agent/*.yaml
+    - k8s/manifests/frontend/*.yaml
+
+# ==============================================================================
+# Deploy
+# ==============================================================================
+deploy:
+  kubectl:
+    defaultNamespace: jobradar
+
+# ==============================================================================
+# Profiles
+# ==============================================================================
+profiles:
+  # Local development — default profile
+  - name: local
+    activation:
+      - env: ENV=local
+    build:
+      local:
+        push: false
+    deploy:
+      kubectl:
+        defaultNamespace: jobradar
+
+  # Hetzner production — push to ghcr.io
+  - name: hetzner
+    activation:
+      - env: ENV=hetzner
+    build:
+      local:
+        push: true
+    deploy:
+      kubectl:
+        defaultNamespace: jobradar
+        flags:
+          global:
+            - --kubeconfig=${KUBECONFIG}
+
+# ==============================================================================
+# Port forwarding (skaffold dev only)
+# ==============================================================================
+portForward:
+  - resourceType: service
+    resourceName: api-gateway
+    namespace: jobradar
+    port: 8080
+    localPort: 8080
+
+  - resourceType: service
+    resourceName: mcp-server
+    namespace: jobradar
+    port: 8090
+    localPort: 8090
+
+  - resourceType: service
+    resourceName: a2a-agent
+    namespace: jobradar
+    port: 8091
+    localPort: 8091
+
+  - resourceType: service
+    resourceName: frontend
+    namespace: jobradar
+    port: 80
+    localPort: 5173
+
+  - resourceType: service
+    resourceName: grafana
+    namespace: jobradar
+    port: 3000
+    localPort: 3100
+
+  - resourceType: service
+    resourceName: langfuse
+    namespace: jobradar
+    port: 3000
+    localPort: 3101

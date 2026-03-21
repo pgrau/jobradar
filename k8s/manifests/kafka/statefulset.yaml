@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka
+  namespace: jobradar
+  labels:
+    app: kafka
+    app.kubernetes.io/part-of: jobradar
+spec:
+  serviceName: kafka-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka
+  template:
+    metadata:
+      labels:
+        app: kafka
+        app.kubernetes.io/part-of: jobradar
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      initContainers:
+        - name: kafka-init
+          image: apache/kafka:4.2.0
+          command:
+            - /bin/bash
+            - -c
+            - |
+              CLUSTER_ID=$(/opt/kafka/bin/kafka-storage.sh random-uuid)
+              /opt/kafka/bin/kafka-storage.sh format \
+                --config /opt/kafka/config/kraft/server.properties \
+                --cluster-id "$CLUSTER_ID" \
+                --ignore-formatted
+          volumeMounts:
+            - name: kafka-data
+              mountPath: /var/kafka/data
+            - name: kafka-config
+              mountPath: /opt/kafka/config/kraft/server.properties
+              subPath: kraft.properties
+      containers:
+        - name: kafka
+          image: apache/kafka:4.2.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - /opt/kafka/bin/kafka-server-start.sh
+            - /opt/kafka/config/kraft/server.properties
+          ports:
+            - name: client
+              containerPort: 9092
+            - name: controller
+              containerPort: 9093
+          env:
+            - name: KAFKA_HEAP_OPTS
+              value: "-Xmx512m -Xms256m"
+          volumeMounts:
+            - name: kafka-data
+              mountPath: /var/kafka/data
+            - name: kafka-config
+              mountPath: /opt/kafka/config/kraft/server.properties
+              subPath: kraft.properties
+          resources:
+            requests:
+              cpu: 100m
+              memory: 384Mi
+            limits:
+              cpu: 500m
+              memory: 768Mi
+          livenessProbe:
+            tcpSocket:
+              port: client
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: client
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 3
+      volumes:
+        - name: kafka-config
+          configMap:
+            name: kafka-config
+  volumeClaimTemplates:
+    - metadata:
+        name: kafka-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi

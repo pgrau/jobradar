@@ -1,0 +1,33 @@
+image:
+  repository: pgvector/pgvector
+  tag: "0.8.2-pg18"
+  pullPolicy: IfNotPresent
+
+auth:
+  database: jobradar
+  username: jobradar
+
+primary:
+  persistence:
+    enabled: true
+    size: 1Gi
+
+  initdb:
+    scripts:
+      01-extensions.sql: |
+        CREATE EXTENSION IF NOT EXISTS vector;
+        CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+  containerSecurityContext:
+    readOnlyRootFilesystem: false
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+metrics:
+  enabled: false
