@@ -1,0 +1,133 @@
+syntax = "proto3";
+
+package rag.v1;
+
+option go_package = "github.com/pgrau/jobradar/proto/rag/v1;ragv1";
+
+// RAGService handles semantic search and context retrieval over the offer corpus.
+// Used by: scorer, api-gateway, mcp-server, a2a-agent
+service RAGService {
+  // SearchOffers performs semantic similarity search over ingested offers.
+  rpc SearchOffers(SearchOffersRequest) returns (SearchOffersResponse);
+
+  // GetSimilarOffers returns offers similar to a given offer.
+  // Used by scorer to enrich context before LLM scoring.
+  rpc GetSimilarOffers(GetSimilarOffersRequest) returns (GetSimilarOffersResponse);
+
+  // StoreOffer stores an offer embedding in pgvector.
+  // Called by embedder after generating the vector.
+  rpc StoreOffer(StoreOfferRequest) returns (StoreOfferResponse);
+
+  // GetMarketContext returns RAG-augmented context for a role or topic.
+  // Used by llm-service to ground trend analysis in real offer data.
+  rpc GetMarketContext(GetMarketContextRequest) returns (GetMarketContextResponse);
+}
+
+// ----------------------------------------------------------------------------
+// SearchOffers
+// ----------------------------------------------------------------------------
+
+message SearchOffersRequest {
+  string profile_id  = 1; // scopes results to this user
+  string query       = 2; // natural language search query
+  repeated float query_embedding = 3; // pre-computed embedding (optional)
+  SearchFilters filters = 4;
+  int32  limit       = 5; // default 20, max 100
+  int32  offset      = 6; // pagination
+}
+
+message SearchFilters {
+  repeated string locations  = 1; // e.g. ["Barcelona", "Remote"]
+  repeated string companies  = 2;
+  repeated string sources    = 3; // e.g. ["linkedin", "remoteok"]
+  int32  min_score           = 4; // minimum AI score (0-100)
+  int32  days_ago            = 5; // offers ingested within last N days
+  bool   remote_only         = 6;
+  int32  min_salary_eur      = 7;
+}
+
+message SearchOffersResponse {
+  repeated OfferResult results = 1;
+  int32    total               = 2; // total matching offers (for pagination)
+}
+
+message OfferResult {
+  string offer_id    = 1;
+  string profile_id  = 2;
+  string title       = 3;
+  string company     = 4;
+  string location    = 5;
+  string source      = 6; // "linkedin" | "remoteok" | "remotive" | "wwr" | "infojobs"
+  string url         = 7;
+  string summary     = 8;
+  int32  score       = 9;  // AI score 0-100
+  float  similarity  = 10; // cosine similarity 0.0-1.0
+  string reasoning   = 11; // LLM scoring reasoning
+  repeated string skill_matches = 12;
+  repeated string skill_gaps    = 13;
+  int64  ingested_at = 14; // unix timestamp
+  int64  posted_at   = 15; // unix timestamp (from source)
+  bool   reviewed    = 16; // user has seen this offer
+  bool   saved       = 17; // user saved this offer
+}
+
+// ----------------------------------------------------------------------------
+// GetSimilarOffers
+// ----------------------------------------------------------------------------
+
+message GetSimilarOffersRequest {
+  string profile_id          = 1;
+  string offer_id            = 2;
+  repeated float embedding   = 3; // embedding of the reference offer
+  int32  limit               = 4; // default 5
+  int32  days_ago            = 5; // search within last N days
+}
+
+message GetSimilarOffersResponse {
+  repeated OfferResult results = 1;
+}
+
+// ----------------------------------------------------------------------------
+// StoreOffer
+// ----------------------------------------------------------------------------
+
+message StoreOfferRequest {
+  string profile_id        = 1;
+  string offer_id          = 2;
+  repeated float embedding = 3; // 1024-dimensional vector
+  OfferMetadata metadata   = 4;
+}
+
+message OfferMetadata {
+  string title      = 1;
+  string company    = 2;
+  string location   = 3;
+  string source     = 4;
+  string url        = 5;
+  string raw_text   = 6;
+  int64  posted_at  = 7; // unix timestamp
+}
+
+message StoreOfferResponse {
+  string offer_id = 1;
+  bool   stored   = 2;
+}
+
+// ----------------------------------------------------------------------------
+// GetMarketContext
+// ----------------------------------------------------------------------------
+
+message GetMarketContextRequest {
+  string profile_id = 1;
+  string role       = 2; // e.g. "Staff Backend Engineer"
+  string region     = 3; // e.g. "Europe"
+  string topic      = 4; // e.g. "Go" | "Kubernetes" | "AI Platform"
+  int32  days_ago   = 5; // context window in days
+  int32  max_offers = 6; // max offers to include in context (default 10)
+}
+
+message GetMarketContextResponse {
+  repeated OfferResult context_offers = 1; // most relevant offers for context
+  int32    total_offers               = 2; // total offers in corpus for this query
+  string   period                     = 3; // e.g. "last_30_days"
+}

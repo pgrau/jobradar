@@ -1,0 +1,94 @@
+syntax = "proto3";
+
+package embedder.v1;
+
+option go_package = "github.com/pgrau/jobradar/proto/embedder/v1;embedderv1";
+
+// EmbedderService generates vector embeddings via LiteLLM.
+// Used by: scorer, rag-service (indirectly), api-gateway
+// Model: mxbai-embed-large (Ollama local) | gemini-embedding-001 (Gemini production)
+// Output dimensions: 1024
+service EmbedderService {
+  // EmbedText generates a single embedding for a given text.
+  rpc EmbedText(EmbedTextRequest) returns (EmbedTextResponse);
+
+  // EmbedBatch generates embeddings for multiple texts in a single call.
+  // More efficient than multiple EmbedText calls — reduces LiteLLM round trips.
+  rpc EmbedBatch(EmbedBatchRequest) returns (EmbedBatchResponse);
+
+  // EmbedCV generates and stores the embedding for a user CV.
+  // Called by auth service after CV upload and text extraction.
+  rpc EmbedCV(EmbedCVRequest) returns (EmbedCVResponse);
+}
+
+// ----------------------------------------------------------------------------
+// EmbedText
+// ----------------------------------------------------------------------------
+
+message EmbedTextRequest {
+  string text        = 1; // text to embed
+  EmbedPurpose purpose = 2; // hints the model on how to embed
+}
+
+message EmbedTextResponse {
+  repeated float embedding = 1; // 1024-dimensional vector
+  string model             = 2; // model used
+  int32  tokens            = 3; // tokens consumed
+  int64  latency_ms        = 4;
+}
+
+// ----------------------------------------------------------------------------
+// EmbedBatch
+// ----------------------------------------------------------------------------
+
+message EmbedBatchRequest {
+  repeated EmbedItem items = 1;
+}
+
+message EmbedItem {
+  string id      = 1; // caller-defined ID to correlate request/response
+  string text    = 2;
+  EmbedPurpose purpose = 3;
+}
+
+message EmbedBatchResponse {
+  repeated EmbedResult results = 1;
+  string model                 = 2;
+  int32  total_tokens          = 3;
+  int64  latency_ms            = 4;
+}
+
+message EmbedResult {
+  string id                = 1; // same ID as EmbedItem.id
+  repeated float embedding = 2; // 1024-dimensional vector
+  bool   cached            = 3; // true if served from Valkey cache
+}
+
+// ----------------------------------------------------------------------------
+// EmbedCV
+// ----------------------------------------------------------------------------
+
+message EmbedCVRequest {
+  string profile_id = 1;
+  string cv_text    = 2; // extracted text from PDF
+}
+
+message EmbedCVResponse {
+  string profile_id        = 1;
+  repeated float embedding = 2; // 1024-dimensional vector
+  int32  tokens            = 3;
+  string model             = 4;
+}
+
+// ----------------------------------------------------------------------------
+// Enums
+// ----------------------------------------------------------------------------
+
+// EmbedPurpose hints the model on the intended use of the embedding.
+// Some models (e.g. mxbai-embed-large) support task-specific prefixes
+// that improve retrieval quality.
+enum EmbedPurpose {
+  EMBED_PURPOSE_UNSPECIFIED = 0;
+  EMBED_PURPOSE_DOCUMENT    = 1; // storing a document (offer text, CV)
+  EMBED_PURPOSE_QUERY       = 2; // querying against stored documents
+}

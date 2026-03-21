@@ -1,0 +1,121 @@
+syntax = "proto3";
+
+package llm.v1;
+
+option go_package = "github.com/pgrau/jobradar/proto/llm/v1;llmv1";
+
+// LLMService handles all LLM inference operations via LiteLLM.
+// Used by: scorer, api-gateway, mcp-server, a2a-agent
+service LLMService {
+  // ScoreOffer scores a job offer against a user CV.
+  // Returns a score 0-100 with structured reasoning.
+  rpc ScoreOffer(ScoreOfferRequest) returns (ScoreOfferResponse);
+
+  // SummarizeOffer generates a concise summary of a job offer.
+  rpc SummarizeOffer(SummarizeOfferRequest) returns (SummarizeOfferResponse);
+
+  // AnalyzeTrends analyzes a batch of offers to extract skill trends.
+  rpc AnalyzeTrends(AnalyzeTrendsRequest) returns (AnalyzeTrendsResponse);
+
+  // ScoreOfferStream streams the scoring reasoning token by token.
+  // Used when the caller wants progressive output (e.g. frontend via SSE).
+  rpc ScoreOfferStream(ScoreOfferRequest) returns (stream ScoreOfferChunk);
+}
+
+// ----------------------------------------------------------------------------
+// ScoreOffer
+// ----------------------------------------------------------------------------
+
+message ScoreOfferRequest {
+  string profile_id  = 1; // UUID v7
+  string offer_id    = 2; // UUID v7
+  string offer_text  = 3; // full job offer content
+  string cv_text     = 4; // user CV text extracted from PDF
+  repeated string cv_skills = 5; // pre-extracted skills for faster matching
+}
+
+message ScoreOfferResponse {
+  string offer_id        = 1;
+  int32  score           = 2; // 0-100
+  string reasoning       = 3; // LLM explanation of the score
+  repeated SkillMatch skill_matches  = 4; // matched skills
+  repeated SkillGap   skill_gaps     = 5; // skills in offer not in CV
+  string model           = 6; // model used (e.g. gemini-2.0-flash)
+  int32  prompt_tokens   = 7;
+  int32  completion_tokens = 8;
+  int64  latency_ms      = 9;
+}
+
+message SkillMatch {
+  string skill      = 1;
+  float  confidence = 2; // 0.0-1.0
+}
+
+message SkillGap {
+  string skill      = 1;
+  string importance = 2; // "required" | "preferred" | "nice-to-have"
+}
+
+message ScoreOfferChunk {
+  string offer_id = 1;
+  string token    = 2; // streaming token
+  bool   done     = 3; // true on last chunk
+}
+
+// ----------------------------------------------------------------------------
+// SummarizeOffer
+// ----------------------------------------------------------------------------
+
+message SummarizeOfferRequest {
+  string offer_id   = 1;
+  string offer_text = 2;
+  int32  max_words  = 3; // default 100
+}
+
+message SummarizeOfferResponse {
+  string offer_id = 1;
+  string summary  = 2;
+  string model    = 3;
+  int32  prompt_tokens     = 4;
+  int32  completion_tokens = 5;
+}
+
+// ----------------------------------------------------------------------------
+// AnalyzeTrends
+// ----------------------------------------------------------------------------
+
+message AnalyzeTrendsRequest {
+  string profile_id       = 1;
+  repeated string offer_texts = 2; // batch of offer texts
+  string role             = 3; // e.g. "Staff Backend Engineer"
+  string region           = 4; // e.g. "Europe"
+  string period           = 5; // e.g. "last_7_days" | "last_30_days"
+}
+
+message AnalyzeTrendsResponse {
+  repeated TrendingSkill trending_skills = 1;
+  repeated HiringCompany top_companies   = 2;
+  SalaryRange            salary_range    = 3;
+  string                 summary         = 4;
+  string                 model           = 5;
+}
+
+message TrendingSkill {
+  string skill         = 1;
+  int32  mention_count = 2;
+  float  growth_rate   = 3; // compared to previous period
+  string trend         = 4; // "rising" | "stable" | "declining"
+}
+
+message HiringCompany {
+  string company       = 1;
+  int32  open_roles    = 2;
+  repeated string locations = 3;
+}
+
+message SalaryRange {
+  int32  min_eur = 1;
+  int32  max_eur = 2;
+  int32  median_eur = 3;
+  string currency   = 4; // "EUR" | "USD" | "GBP"
+}
