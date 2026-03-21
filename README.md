@@ -10,8 +10,6 @@
 
 JobRadar ingests job offers from LinkedIn, RemoteOK, Remotive, WeWorkRemotely, InfoJobs and direct company APIs, processes them through an AI analysis pipeline, and delivers personalized insights via a React dashboard and smart alerts.
 
-Built as a portfolio project to demonstrate production-grade distributed systems architecture — and to actually help during a job search.
-
 **Repository:** [github.com/pgrau/jobradar](https://github.com/pgrau/jobradar)
 
 - **Multi-user platform** — register, upload your CV, get personalized matches
