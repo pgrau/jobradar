@@ -1,1 +1,113 @@
+# ==============================================================================
+# JobRadar .gitignore
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Environment variables — never commit real credentials
+# ------------------------------------------------------------------------------
+.env
+.env.local
+.env.hetzner
+.env.*.local
+*.env
+
+# ------------------------------------------------------------------------------
+# Go
+# ------------------------------------------------------------------------------
+# Binaries
+bin/
+dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test output
+*.test
+*.out
+coverage.out
+coverage.html
+
+# Go workspace
+go.work.sum
+
+# Air (live reload)
+tmp/
+
+# ------------------------------------------------------------------------------
+# Frontend (apps/frontend)
+# ------------------------------------------------------------------------------
+apps/frontend/node_modules/
+apps/frontend/dist/
+apps/frontend/.vite/
+apps/frontend/coverage/
+apps/frontend/.env
+apps/frontend/.env.local
+
+# ------------------------------------------------------------------------------
+# Kubernetes
+# ------------------------------------------------------------------------------
+# Local kubeconfig overrides
+kubeconfig
+kubeconfig.yaml
+*.kubeconfig
+
+# Helm chart lock files with local paths
+charts/
+
+# ------------------------------------------------------------------------------
+# Terraform
+# ------------------------------------------------------------------------------
+infra/terraform/**/.terraform/
+infra/terraform/**/.terraform.lock.hcl
+infra/terraform/**/terraform.tfstate
+infra/terraform/**/terraform.tfstate.backup
+infra/terraform/**/terraform.tfvars
+infra/terraform/**/*.tfvars
+infra/terraform/**/override.tf
+infra/terraform/**/override.tf.json
+infra/terraform/**/*_override.tf
+infra/terraform/**/*_override.tf.json
+infra/terraform/**/crash.log
+infra/terraform/**/crash.*.log
+
+# ------------------------------------------------------------------------------
+# Docker
+# ------------------------------------------------------------------------------
+.docker/
+
+# ------------------------------------------------------------------------------
+# Generated protobuf code
+# Keep .proto files, ignore generated Go stubs
+# ------------------------------------------------------------------------------
+# Generated on build — do not commit
+proto/**/*.pb.go
+proto/**/*_grpc.pb.go
+
+# ------------------------------------------------------------------------------
+# IDE
+# ------------------------------------------------------------------------------
 .idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ------------------------------------------------------------------------------
+# Logs
+# ------------------------------------------------------------------------------
+*.log
+logs/
+
+# ------------------------------------------------------------------------------
+# Test artifacts
+# ------------------------------------------------------------------------------
+testdata/tmp/
+
+# ------------------------------------------------------------------------------
+# kind
+# ------------------------------------------------------------------------------
+# kind exports kubeconfig here by default
+~/.kube/kind-*
