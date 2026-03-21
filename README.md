@@ -1,6 +1,6 @@
 # JobRadar
 
-> Real-time job market intelligence platform powered by AI — tracks tech job offers, scores them against your profile, and surfaces market trends before anyone else.
+> Real-time job market intelligence platform powered by AI — ingests job offers from multiple sources, scores them against your profile, and surfaces market trends.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go](https://img.shields.io/badge/Go-1.26-blue.svg)](https://golang.org)
@@ -555,5 +555,4 @@ MIT — see [LICENSE](LICENSE) for details.
 **Pau Ferran Grau** — Tech Lead · Staff Backend Engineer
 Barcelona, Spain · [linkedin.com/in/pauferrangrau](https://linkedin.com/in/pauferrangrau) · [github.com/pgrau](https://github.com/pgrau)
 
-> 20 years building distributed systems. Currently focused on AI-augmented engineering,
-> event-driven architecture, and high-performance backend platforms.
+> 20 years building distributed systems. Focused on AI-augmented engineering, event-driven architecture, and high-performance backend platforms.
