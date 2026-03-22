@@ -585,6 +585,7 @@ jobradar/
 - **[ADR-008](docs/adr/008-mcp-server.md)** — MCP server for LLM client tooling
 - **[ADR-009](docs/adr/009-valkey-over-redis.md)** — Valkey over Redis (license + governance)
 - **[ADR-010](docs/adr/010-multi-user-design.md)** — Multi-user design with profile_id isolation
+- **[ADR-011](docs/adr/011-rag-no-joins.md)** — Denormalized scored_offer to avoid joins in RAG queries
 
 ---
 
@@ -634,7 +635,7 @@ jobradar/
 | Kubernetes deployment (Hetzner) | 🔲 Pending |
 | React frontend — job feed + search + trends | 🔲 Pending |
 | Full observability (LGTM + Langfuse) | 🔲 Pending |
-| Embedder service + unit tests | ✅ Done |
+| Embedder service | ✅ Done |
 
 ### v2
 
