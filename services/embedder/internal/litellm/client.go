@@ -12,11 +12,14 @@ import (
 )
 
 const (
-	httpTimeout = 30 * time.Second
-	maxRetries  = 3
+	httpTimeout  = 30 * time.Second
+	maxRetries   = 3
+	defaultModel = "mxbai-embed-large"
 )
 
 // Client wraps the OpenAI-compatible LiteLLM API for embedding generation.
+// LiteLLM exposes an OpenAI-compatible endpoint — this client works
+// transparently with Ollama (local) and Gemini (production) via LiteLLM routing.
 type Client struct {
 	openai *openai.Client
 	model  string
@@ -32,8 +35,7 @@ type EmbedResult struct {
 }
 
 // NewClient creates a LiteLLM client and verifies the endpoint is reachable.
-// model is the LiteLLM model name to use for embeddings (e.g. "embeddings").
-func NewClient(ctx context.Context, baseURL, apiKey, model string, logger *slog.Logger) (*Client, error) {
+func NewClient(ctx context.Context, baseURL, apiKey string, logger *slog.Logger) (*Client, error) {
 	httpClient := &http.Client{
 		Timeout: httpTimeout,
 	}
@@ -47,7 +49,7 @@ func NewClient(ctx context.Context, baseURL, apiKey, model string, logger *slog.
 
 	client := &Client{
 		openai: &c,
-		model:  model,
+		model:  defaultModel,
 		logger: logger,
 	}
 
@@ -55,7 +57,7 @@ func NewClient(ctx context.Context, baseURL, apiKey, model string, logger *slog.
 		return nil, fmt.Errorf("litellm not reachable at %s: %w", baseURL, err)
 	}
 
-	logger.Info("litellm connected", "base_url", baseURL, "model", model)
+	logger.Info("litellm connected", "base_url", baseURL, "model", defaultModel)
 
 	return client, nil
 }
@@ -66,7 +68,7 @@ func (c *Client) EmbedText(ctx context.Context, text string, purpose EmbedPurpos
 		return nil, fmt.Errorf("text must not be empty")
 	}
 
-	input := c.applyPurposePrefix(text, purpose)
+	input := ApplyPurposePrefix(text, purpose)
 	start := time.Now()
 
 	resp, err := c.openai.Embeddings.New(ctx, openai.EmbeddingNewParams{
@@ -104,7 +106,7 @@ func (c *Client) EmbedBatch(ctx context.Context, texts []string, purpose EmbedPu
 
 	inputs := make([]string, len(texts))
 	for i, text := range texts {
-		inputs[i] = c.applyPurposePrefix(text, purpose)
+		inputs[i] = ApplyPurposePrefix(text, purpose)
 	}
 
 	start := time.Now()
@@ -150,13 +152,16 @@ const (
 	PurposeQuery
 )
 
-func (c *Client) applyPurposePrefix(text string, purpose EmbedPurpose) string {
+// ApplyPurposePrefix applies task-specific prefixes for mxbai-embed-large.
+// Exported as a pure function — used internally by Client and directly in tests.
+func ApplyPurposePrefix(text string, purpose EmbedPurpose) string {
 	if purpose == PurposeQuery {
 		return "Represent this sentence for searching relevant passages: " + text
 	}
 	return text
 }
 
+// ping verifies LiteLLM is reachable.
 func (c *Client) ping(ctx context.Context) error {
 	_, err := c.EmbedText(ctx, "ping", PurposeDocument)
 	return err
