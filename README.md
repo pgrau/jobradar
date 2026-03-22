@@ -620,20 +620,21 @@ jobradar/
 
 ### v1
 
-| Feature                                                           | Status    |
-|-------------------------------------------------------------------|-----------|
-| Multi-user with JWT auth                                          | 🔲 Pending |
-| CV upload (PDF) + automatic embedding                             | 🔲 Pending |
+| Feature | Status |
+|---|---|
+| Multi-user with JWT auth | 🔲 Pending |
+| CV upload (PDF) + automatic embedding | 🔲 Pending |
 | Job offer ingestion — LinkedIn, RemoteOK, Remotive, WWR, InfoJobs | 🔲 Pending |
-| AI scoring per user profile                                       | 🔲 Pending |
-| Market trend analysis                                             | 🔲 Pending |
-| Real-time alerts via SSE                                          | 🔲 Pending |
-| MCP server                                                        | 🔲 Pending |
-| A2A agent                                                         | 🔲 Pending |
-| Kubernetes deployment (local)                                     | ✅ Done    |
-| Kubernetes deployment (hertz)                                     | 🔲 Pending |
-| React frontend — job feed + search + trends                       | 🔲 Pending |
-| Full observability (LGTM + Langfuse)                              | 🔲 Pending |
+| AI scoring per user profile | 🔲 Pending |
+| Market trend analysis | 🔲 Pending |
+| Real-time alerts via SSE | 🔲 Pending |
+| MCP server | 🔲 Pending |
+| A2A agent | 🔲 Pending |
+| Kubernetes deployment (local) | ✅ Done |
+| Kubernetes deployment (Hetzner) | 🔲 Pending |
+| React frontend — job feed + search + trends | 🔲 Pending |
+| Full observability (LGTM + Langfuse) | 🔲 Pending |
+| Embedder service + unit tests | ✅ Done |
 
 ### v2
 
