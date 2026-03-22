@@ -3,6 +3,8 @@ package handler_test
 import (
 	"context"
 	"errors"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -31,6 +33,7 @@ func (m *mockLiteLLM) EmbedBatch(ctx context.Context, texts []string, purpose li
 }
 
 type mockCache struct {
+	mu   sync.RWMutex
 	data map[string][]byte
 }
 
@@ -39,6 +42,8 @@ func newMockCache() *mockCache {
 }
 
 func (m *mockCache) Get(_ context.Context, key string) ([]byte, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	v, ok := m.data[key]
 	if !ok {
 		return nil, cache.ErrCacheMiss
@@ -47,6 +52,8 @@ func (m *mockCache) Get(_ context.Context, key string) ([]byte, error) {
 }
 
 func (m *mockCache) Set(_ context.Context, key string, value []byte, _ time.Duration) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.data[key] = value
 	return nil
 }
@@ -119,10 +126,10 @@ func TestEmbedText_EmptyText_ReturnsInvalidArgument(t *testing.T) {
 }
 
 func TestEmbedText_CacheHit_DoesNotCallLiteLLM(t *testing.T) {
-	calls := 0
+	var calls atomic.Int64
 	mock := &mockLiteLLM{
 		embedTextFn: func(_ context.Context, _ string, _ litellm.EmbedPurpose) (*litellm.EmbedResult, error) {
-			calls++
+			calls.Add(1)
 			return fakeEmbedResult(), nil
 		},
 	}
@@ -142,7 +149,7 @@ func TestEmbedText_CacheHit_DoesNotCallLiteLLM(t *testing.T) {
 	}
 
 	// Wait for background cache write
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	// Second call — should hit cache
 	_, err = h.EmbedText(context.Background(), req)
@@ -150,8 +157,8 @@ func TestEmbedText_CacheHit_DoesNotCallLiteLLM(t *testing.T) {
 		t.Fatalf("unexpected error on second call: %v", err)
 	}
 
-	if calls != 1 {
-		t.Errorf("expected LiteLLM to be called once, got %d calls", calls)
+	if calls.Load() != 1 {
+		t.Errorf("expected LiteLLM to be called once, got %d calls", calls.Load())
 	}
 }
 
