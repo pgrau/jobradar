@@ -35,7 +35,8 @@ type EmbedResult struct {
 }
 
 // NewClient creates a LiteLLM client and verifies the endpoint is reachable.
-func NewClient(ctx context.Context, baseURL, apiKey string, logger *slog.Logger) (*Client, error) {
+// model is the LiteLLM model name to use for embeddings (e.g. "embeddings").
+func NewClient(ctx context.Context, baseURL, apiKey, model string, logger *slog.Logger) (*Client, error) {
 	httpClient := &http.Client{
 		Timeout: httpTimeout,
 	}
@@ -49,7 +50,7 @@ func NewClient(ctx context.Context, baseURL, apiKey string, logger *slog.Logger)
 
 	client := &Client{
 		openai: &c,
-		model:  defaultModel,
+		model:  model,
 		logger: logger,
 	}
 
