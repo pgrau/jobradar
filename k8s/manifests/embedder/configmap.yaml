@@ -15,14 +15,14 @@ data:
   LITELLM_BASE_URL: "http://litellm:4000"
 
   # Embedding model — override in values.hetzner.yaml for Gemini
-  OLLAMA_EMBED_MODEL: "mxbai-embed-large"
+  OLLAMA_EMBED_MODEL: "embeddings"
   GEMINI_EMBED_DIMENSIONS: "1024"
 
   # Valkey
-  VALKEY_ADDR: "valkey:6379"
+  VALKEY_ADDR: "valkey-primary:6379"
   VALKEY_DB: "0"
   VALKEY_LLM_CACHE_TTL: "24h"
 
   # OpenTelemetry
-  OTEL_EXPORTER_OTLP_ENDPOINT: "http://alloy:4317"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "alloy-otlp:4317"
   OTEL_SERVICE_NAMESPACE: "jobradar"

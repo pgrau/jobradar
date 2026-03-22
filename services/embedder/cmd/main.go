@@ -77,7 +77,7 @@ func run(logger *slog.Logger) error {
 	}
 	defer valkeyCache.Close()
 
-	litellmClient, err := litellm.NewClient(startCtx, cfg.LiteLLMBaseURL, cfg.LiteLLMAPIKey, logger)
+	litellmClient, err := litellm.NewClient(startCtx, cfg.LiteLLMBaseURL, cfg.LiteLLMAPIKey, cfg.EmbedModel, logger)
 	if err != nil {
 		return fmt.Errorf("connecting to litellm: %w", err)
 	}

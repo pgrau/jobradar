@@ -1,9 +1,11 @@
 # ==============================================================================
-# Stage 1: proto generation
+# Stage 1: build
 # ==============================================================================
-FROM golang:1.26-alpine AS proto-builder
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS builder
 
-RUN apk add --no-cache protobuf protobuf-dev
+ARG TARGETARCH
+
+RUN apk add --no-cache protobuf protobuf-dev git
 
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest && \
     go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest && \
@@ -11,7 +13,7 @@ RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest && \
 
 WORKDIR /app
 
-COPY go.mod go.sum ./
+COPY go.mod ./
 RUN go mod download
 
 COPY proto/ proto/
@@ -24,28 +26,19 @@ RUN protoc \
     proto/rag/v1/rag.proto \
     proto/embedder/v1/embedder.proto
 
-# ==============================================================================
-# Stage 2: build
-# ==============================================================================
-FROM golang:1.26-alpine AS builder
-
-WORKDIR /app
-
-COPY --from=proto-builder /app/go.mod /app/go.sum ./
-COPY --from=proto-builder /app/proto/ proto/
-
-RUN go mod download
-
 COPY services/embedder/ services/embedder/
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+RUN go mod tidy
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} \
     go build \
     -ldflags="-w -s" \
     -o /bin/embedder \
     ./services/embedder/cmd/...
 
 # ==============================================================================
-# Stage 3: final image
+# Stage 2: final — distroless, no shell, non-root
+# To debug: kubectl debug -it deployment/embedder --image=alpine --target=embedder -n jobradar
 # ==============================================================================
 FROM gcr.io/distroless/static-debian12:nonroot
 

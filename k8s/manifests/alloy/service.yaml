@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: alloy-otlp
+  namespace: jobradar
+  labels:
+    app.kubernetes.io/part-of: jobradar
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/instance: alloy
+    app.kubernetes.io/name: alloy
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+      protocol: TCP
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+      protocol: TCP
