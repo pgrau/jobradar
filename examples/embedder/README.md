@@ -20,7 +20,7 @@ kubectl port-forward svc/embedder 50051:50051 -n jobradar
 ./embed_text.sh "Staff Backend Engineer Go Kubernetes"
 ```
 
-Use `query` purpose when searching:
+Use `query` purpose when searching against stored documents:
 
 ```bash
 ./embed_text.sh "Go jobs in Barcelona" query
@@ -49,10 +49,10 @@ Use `query` purpose when searching:
   Preview:    [-0.0197, -0.0055, -0.0837, -0.0324, -0.0028] ...
 ```
 
-## Override host
+## Connect to a different host
+
+By default the scripts connect to `localhost:50051`. To connect to a remote host:
 
 ```bash
-EMBEDDER_HOST=embedder.yourdomain.c[embedder-example-embed_cv.sh](../../../../Downloads/files%202/embedder-example-embed_cv.sh)
-[embedder-example-embed_batch.sh](../../../../Downloads/files%202/embedder-example-embed_batch.sh)
-[embedder-example-embed_text.sh](../../../../Downloads/files%202/embedder-example-embed_text.sh)om:50051 ./embed_text.sh "Go Kubernetes"
+EMBEDDER_HOST=embedder.yourdomain.com:50051 ./embed_text.sh "Go Kubernetes"
 ```
