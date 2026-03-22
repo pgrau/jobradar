@@ -26,11 +26,18 @@ const (
 	defaultCacheTTL = 24 * time.Hour
 )
 
+// LLMClient defines the interface for LLM embedding generation.
+// Allows mocking in tests without a real LiteLLM connection.
+type LLMClient interface {
+	EmbedText(ctx context.Context, text string, purpose litellm.EmbedPurpose) (*litellm.EmbedResult, error)
+	EmbedBatch(ctx context.Context, texts []string, purpose litellm.EmbedPurpose) ([]*litellm.EmbedResult, error)
+}
+
 // EmbedderHandler implements embedderv1.EmbedderServiceServer.
 type EmbedderHandler struct {
 	embedderv1.UnimplementedEmbedderServiceServer
 
-	litellm *litellm.Client
+	litellm LLMClient
 	cache   cache.Cache
 	logger  *slog.Logger
 
@@ -42,7 +49,7 @@ type EmbedderHandler struct {
 
 // NewEmbedderHandler creates a new EmbedderHandler with OTel metrics registered.
 func NewEmbedderHandler(
-	litellmClient *litellm.Client,
+	litellmClient LLMClient,
 	c cache.Cache,
 	logger *slog.Logger,
 ) *EmbedderHandler {
