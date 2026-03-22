@@ -35,59 +35,59 @@ JobRadar ingests job offers from LinkedIn, RemoteOK, Remotive, WeWorkRemotely, I
             │
             ▼
   ┌─────────────────────────────────────────────────────────────┐
-  │                    Kubernetes Cluster                       │
+  │                    Kubernetes Cluster                        │
   │                                                             │
-  │  ┌─────────────┐         ┌──────────────────────────────┐   │
-  │  │  fetcher    │────────►│           Kafka              │   │
-  │  │  (Go)       │         │  topics: raw-offers          │   │
-  │  └─────────────┘         │          scored-offers       │   │
-  │                          │          alerts              │   │
-  │                          └──────────────┬───────────────┘   │
+  │  ┌─────────────┐         ┌──────────────────────────────┐  │
+  │  │  fetcher    │────────►│           Kafka              │  │
+  │  │  (Go)       │         │  topics: raw-offers          │  │
+  │  └─────────────┘         │          scored-offers       │  │
+  │                          │          alerts              │  │
+  │                          └──────────────┬───────────────┘  │
   │                                         │                   │
   │                                         ▼                   │
-  │                          ┌──────────────────────────────┐   │
-  │                          │       scorer (Go)            │   │
-  │                          │  Kafka consumer + gRPC client│   │
-  │                          └──────────────┬───────────────┘   │
+  │                          ┌──────────────────────────────┐  │
+  │                          │       scorer (Go)            │  │
+  │                          │  Kafka consumer + gRPC client│  │
+  │                          └──────────────┬───────────────┘  │
   │                                         │ gRPC              │
-  │                   ┌─────────────────────┼──────────────┐    │
-  │                   │                     │              │    │
-  │                   ▼                     ▼              ▼    │
-  │          ┌─────────────┐      ┌──────────────┐  ┌─────────┐ │
-  │          │ llm-service │      │  rag-service │  │embedder │ │
-  │          │ (Go/gRPC)   │      │  (Go/gRPC)   │  │(Go/gRPC)│ │
-  │          └──────┬──────┘      └──────┬───────┘  └────┬────┘ │
-  │                 │                    │               │      │
-  │                 ▼                    ▼               ▼      │
-  │          ┌─────────────┐    ┌─────────────────────────┐     │
-  │          │   LiteLLM   │    │   PostgreSQL 18         │     │
-  │          │   Proxy     │    │   + pgvector            │     │
-  │          └──────┬──────┘    └─────────────────────────┘     │
+  │                   ┌─────────────────────┼──────────────┐   │
+  │                   │                     │              │   │
+  │                   ▼                     ▼              ▼   │
+  │          ┌─────────────┐      ┌──────────────┐  ┌─────────┐│
+  │          │ llm-service │      │  rag-service │  │embedder ││
+  │          │ (Go/gRPC)   │      │  (Go/gRPC)   │  │(Go/gRPC)││
+  │          └──────┬──────┘      └──────┬───────┘  └────┬────┘│
+  │                 │                    │               │     │
+  │                 ▼                    ▼               ▼     │
+  │          ┌─────────────┐    ┌─────────────────────────┐   │
+  │          │   LiteLLM   │    │   PostgreSQL 18          │   │
+  │          │   Proxy     │    │   + pgvector             │   │
+  │          └──────┬──────┘    └─────────────────────────┘   │
   │                 │                                           │
-  │          ┌──────┴───────┐                                   │
+  │          ┌──────┴───────┐                                  │
   │          ▼              ▼                                   │
-  │      ┌────────┐   ┌─────────┐                               │
-  │      │ Ollama │   │ Gemini  │                               │
-  │      │(local) │   │ (cloud) │                               │
-  │      └────────┘   └─────────┘                               │
+  │      ┌────────┐   ┌─────────┐                              │
+  │      │ Ollama │   │ Gemini  │                              │
+  │      │(local) │   │ (cloud) │                              │
+  │      └────────┘   └─────────┘                              │
   │                                                             │
-  │  ┌──────────────────────────────────────────────────────┐   │
-  │  │              Observability · LGTM stack              │   │
-  │  │  Grafana Alloy → Tempo (traces)                      │   │
-  │  │                → Loki (logs)                         │   │
-  │  │                → Prometheus (metrics)                │   │
-  │  │  Langfuse (LLM traces) ──► Tempo                     │   │
-  │  │  Grafana (unified dashboards)                        │   │
-  │  └──────────────────────────────────────────────────────┘   │
+  │  ┌──────────────────────────────────────────────────────┐  │
+  │  │              Observability · LGTM stack              │  │
+  │  │  Grafana Alloy → Tempo (traces)                      │  │
+  │  │                → Loki (logs)                         │  │
+  │  │                → Prometheus (metrics)                │  │
+  │  │  Langfuse (LLM traces) ──► Tempo                     │  │
+  │  │  Grafana (unified dashboards)                        │  │
+  │  └──────────────────────────────────────────────────────┘  │
   │                                                             │
-  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐   │
-  │  │  api-gateway │  │  mcp-server  │  │   a2a-agent      │   │
-  │  │  (Go/REST)   │  │  (Go/MCP)    │  │   (Go/A2A)       │   │
-  │  └──────────────┘  └──────────────┘  └──────────────────┘   │
+  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
+  │  │  api-gateway │  │  mcp-server  │  │   a2a-agent      │  │
+  │  │  (Go/REST)   │  │  (Go/MCP)    │  │   (Go/A2A)       │  │
+  │  └──────────────┘  └──────────────┘  └──────────────────┘  │
   │                                                             │
-  │  ┌──────────────────────────────────────────────────────┐   │
-  │  │            Valkey (cache + rate limiting)            │   │
-  │  └──────────────────────────────────────────────────────┘   │
+  │  ┌──────────────────────────────────────────────────────┐  │
+  │  │            Valkey (cache + rate limiting)            │  │
+  │  └──────────────────────────────────────────────────────┘  │
   └─────────────────────────────────────────────────────────────┘
             │
             ▼
@@ -323,54 +323,135 @@ Architecture decisions and technical specifications are human-authored (see [ADR
 
 ### Prerequisites
 
-- Docker + Docker Compose
-- [kind](https://kind.sigs.k8s.io/)
-- [kubectl](https://kubernetes.io/docs/tasks/tools/)
-- [helm](https://helm.sh/)
-- [Ollama](https://ollama.ai/)
-- Go 1.26+
-- Node.js 22+
+- [Docker](https://docs.docker.com/get-docker/)
+- [kind](https://kind.sigs.k8s.io/) — `brew install kind`
+- [kubectl](https://kubernetes.io/docs/tasks/tools/) — `brew install kubectl`
+- [helm](https://helm.sh/) — `brew install helm`
+- [skaffold](https://skaffold.dev/) — `brew install skaffold`
+- [Ollama](https://ollama.ai/) — `brew install ollama`
+- [grpcurl](https://github.com/fullstorydev/grpcurl) — `brew install grpcurl`
 - `make`
 
-### 1. Start local Kubernetes cluster
+### 1. Pull required Ollama models
+
+```bash
+ollama serve &
+ollama pull mistral:7b
+ollama pull mxbai-embed-large
+```
+
+### 2. Configure environment
+
+```bash
+cp .env.example .env
+# edit .env with your values
+```
+
+### 3. Create cluster and deploy infrastructure
 
 ```bash
 make cluster-up
+make deploy-infra
 ```
 
-### 2. Build and load service images
+### 4. Apply secrets
 
 ```bash
-make images-build
-make images-load-kind
+cp k8s/manifests/litellm/secret.yaml.example k8s/manifests/litellm/secret.yaml
+kubectl apply -f k8s/manifests/litellm/secret.yaml -n jobradar
 ```
 
-### 3. Deploy infrastructure
+### 5. Deploy services
 
 ```bash
-make deploy-infra ENV=local
-# Kafka, PostgreSQL 18, Valkey, LiteLLM, Langfuse, LGTM stack
+skaffold dev --profile local
 ```
 
-### 4. Deploy services
+### 6. Forward ports
 
 ```bash
-make deploy ENV=local
+make port-forward-infra
 ```
 
-### 5. Verify
+### 7. Access the services
+
+#### Application
+
+| Service | URL | Credentials |
+|---|---|---|
+| **Frontend** | http://localhost:5173 | — |
+| **API Gateway** | http://localhost:8080 | — |
+| **MCP Server** | http://localhost:8090/mcp | — |
+
+#### AI & LLM
+
+| Service | URL | Credentials | Description |
+|---|---|---|---|
+| **LiteLLM** | http://localhost:4000 | Bearer `sk-jobradar` | LLM proxy — routes to Ollama/Gemini |
+| **LiteLLM UI** | http://localhost:4000/ui | Bearer `sk-jobradar` | Model management, usage stats |
+| **LiteLLM Health** | http://localhost:4000/health | Bearer `sk-jobradar` | Model health status |
+
+#### Observability
+
+| Service | URL | Credentials | Description |
+|---|---|---|---|
+| **Langfuse** | http://localhost:3101 | create on first access | LLM traces — prompts, responses, latency, cost |
+| **Grafana** | http://localhost:3100 | admin / admin | Unified dashboards — traces, logs, metrics |
+| **Prometheus** | http://localhost:9090 | — | Raw metrics |
+| **Tempo** | http://localhost:3200 | — | Distributed traces backend |
+| **Loki** | http://localhost:3102 | — | Logs backend |
+
+#### Infrastructure
+
+| Service | URL / Host | Credentials | Description |
+|---|---|---|---|
+| **MinIO Console** | http://localhost:9001 | minioadmin / jobradar_local | S3 storage UI — CV files, Langfuse data |
+| **MinIO API** | http://localhost:9000 | minioadmin / jobradar_local | S3 API endpoint |
+| **PostgreSQL** | localhost:5432 | jobradar / jobradar_local | Primary database + pgvector |
+| **Kafka** | localhost:9092 | — | Event streaming |
+| **Valkey** | localhost:6379 | — | Cache + rate limiting |
+
+### 8. First time — Langfuse setup
+
+```bash
+# 1. Open http://localhost:3101 and create admin user
+# 2. Create a new project named "jobradar"
+# 3. Go to Settings → API Keys and copy the keys to .env
+LANGFUSE_PUBLIC_KEY=pk-...
+LANGFUSE_SECRET_KEY=sk-...
+
+# 4. Update LiteLLM with Langfuse keys
+helm upgrade litellm oci://ghcr.io/berriai/litellm-helm \
+  -n jobradar \
+  -f k8s/helm/litellm/values.yaml
+```
+
+### Verify
 
 ```bash
 kubectl get pods -n jobradar
 ```
 
-### 6. Open the dashboard
+---
 
-```
-http://localhost:3000     # React frontend
-http://localhost:8080     # api-gateway
-http://localhost:8090/mcp # MCP server
-http://localhost:3100     # Grafana
+## Day-to-day development
+
+```bash
+# Rebuild and redeploy a single service
+make dev-service SVC=embedder
+
+# Tail logs
+kubectl logs -f deployment/embedder -n jobradar
+
+# Run tests
+make test
+make test-service SVC=embedder
+
+# Stop port-forwards
+make port-forward-stop
+
+# Tear down cluster
+make cluster-down
 ```
 
 ---
@@ -539,19 +620,20 @@ jobradar/
 
 ### v1
 
-| Feature | Status |
-|---|---|
-| Multi-user with JWT auth | 🔲 Pending |
-| CV upload (PDF) + automatic embedding | 🔲 Pending |
+| Feature                                                           | Status    |
+|-------------------------------------------------------------------|-----------|
+| Multi-user with JWT auth                                          | 🔲 Pending |
+| CV upload (PDF) + automatic embedding                             | 🔲 Pending |
 | Job offer ingestion — LinkedIn, RemoteOK, Remotive, WWR, InfoJobs | 🔲 Pending |
-| AI scoring per user profile | 🔲 Pending |
-| Market trend analysis | 🔲 Pending |
-| Real-time alerts via SSE | 🔲 Pending |
-| MCP server | 🔲 Pending |
-| A2A agent | 🔲 Pending |
-| Kubernetes deployment (local + Hetzner) | 🔲 Pending |
-| React frontend — job feed + search + trends | 🔲 Pending |
-| Full observability (LGTM + Langfuse) | 🔲 Pending |
+| AI scoring per user profile                                       | 🔲 Pending |
+| Market trend analysis                                             | 🔲 Pending |
+| Real-time alerts via SSE                                          | 🔲 Pending |
+| MCP server                                                        | 🔲 Pending |
+| A2A agent                                                         | 🔲 Pending |
+| Kubernetes deployment (local)                                     | ✅ Done    |
+| Kubernetes deployment (hertz)                                     | 🔲 Pending |
+| React frontend — job feed + search + trends                       | 🔲 Pending |
+| Full observability (LGTM + Langfuse)                              | 🔲 Pending |
 
 ### v2
 
