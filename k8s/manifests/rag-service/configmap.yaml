@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rag-service-config
+  namespace: jobradar
+  labels:
+    app: rag-service
+    app.kubernetes.io/name: rag-service
+    app.kubernetes.io/part-of: jobradar
+data:
+  ENV: "local"
+  RAG_GRPC_PORT: "50052"
+
+  # OpenTelemetry
+  OTEL_EXPORTER_OTLP_ENDPOINT: "alloy-otlp:4317"
+  OTEL_SERVICE_NAMESPACE: "jobradar"

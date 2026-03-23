@@ -313,9 +313,49 @@ kubectl apply -f k8s/manifests/litellm/secret.yaml -n jobradar
 
 ## Development Workflow
 
-This project follows **Spec-Driven Development** with Claude Code for AI-assisted implementation.
+This project uses **Contract-Driven Development** with Claude Code for AI-assisted implementation.
 
-Architecture decisions and technical specifications are human-authored (see [ADRs](docs/adr/)). Claude Code assists with implementation within those constraints — scaffolding services, generating protobuf stubs, writing Helm values, and producing test boilerplate.
+The human defines the contracts: ADRs capture architectural decisions, proto files define service interfaces, and DB migrations define the schema. Claude Code implements services within those constraints using a structured agent pipeline.
+
+### Claude Code agent pipeline
+
+Every service is built through a four-stage pipeline, each handled by a specialised agent:
+
+```
+/implement-service <name>
+        │
+        ├─► service-implementer   code + initial tests + K8s manifests
+        ├─► test-writer           fills coverage gaps (no implementation changes)
+        ├─► code-reviewer         Go conventions, OTel, gRPC status codes, K8s security
+        └─► qa                    proto contract compliance, ADR compliance, domain rules
+```
+
+**Commands** (entry points, type `/` in Claude Code):
+
+| Command | Description |
+|---|---|
+| `/implement-service <name>` | Full pipeline: implement → test → review → QA |
+| `/review-service <name>` | Code review only, no implementation |
+| `/new-adr <title>` | Scaffold a new Architecture Decision Record |
+
+**Agents** (`.claude/agents/`):
+
+| Agent | Model | Role |
+|---|---|---|
+| `service-implementer` | Opus | Implements a full Go service following the `embedder` canonical reference |
+| `test-writer` | Opus | Adds missing test coverage without touching implementation |
+| `code-reviewer` | Opus | Validates Go patterns, OTel, gRPC codes, K8s security context |
+| `qa` | Opus | Validates behaviour against proto contract, ADRs, and domain rules |
+
+**Skills** (`.claude/skills/`) — reusable scaffolds invoked by agents:
+
+| Skill | Description |
+|---|---|
+| `scaffold-telemetry` | Generates `internal/telemetry/` — identical across all services |
+| `scaffold-grpc-main` | Generates `cmd/main.go` with correct graceful shutdown pattern |
+| `scaffold-k8s` | Generates K8s manifests with required security context |
+
+The human role is: author ADRs and proto definitions, then approve or reject the QA verdict before merging.
 
 ---
 

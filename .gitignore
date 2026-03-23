@@ -116,3 +116,6 @@ testdata/tmp/
 # Kubernetes secrets — never commit real credentials
 k8s/**/*secret*.yaml
 k8s/**/*secrets*.yaml
+
+# claude
+.claude/settings.local.json

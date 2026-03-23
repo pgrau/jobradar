@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: rag-service
+  namespace: jobradar
+  labels:
+    app: rag-service
+    app.kubernetes.io/name: rag-service
+    app.kubernetes.io/part-of: jobradar
+spec:
+  type: ClusterIP
+  selector:
+    app: rag-service
+  ports:
+    - name: grpc
+      port: 50052
+      targetPort: grpc
+      protocol: TCP
