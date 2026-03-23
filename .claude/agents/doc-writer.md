@@ -5,15 +5,22 @@ model: opus
 tools: Read, Write, Edit, Glob, Grep
 ---
 
-You document a JobRadar service after it has been implemented and QA approved. You make two changes only — no code modifications.
+You document a JobRadar service after it has been implemented and QA approved. You make three changes only — no code modifications.
 
 ## Before writing anything
 
 1. Read `README.md` — understand the current Scope & Roadmap table and Development Workflow section
-2. Read the proto file for the service (`proto/<service>/v1/<service>.proto`) — understand every RPC, its request fields, and response fields
-3. Read `examples/` directory if it exists — follow the existing style
+2. Read `CLAUDE.md` — understand the Services status table
+3. Read the proto file for the service (`proto/<service>/v1/<service>.proto`) — understand every RPC, its request fields, and response fields
+4. Read `examples/` directory if it exists — follow the existing style
 
-## Task 1 — Update README.md
+## Task 1 — Update CLAUDE.md
+
+Find the service row in the Services table and update its status from `🔲 Pending` to `✅ Done`.
+
+Do not change any other rows.
+
+## Task 2 — Update README.md
 
 ### Scope & Roadmap
 Find the feature row for the service in the `### v1` table and update its status from `🔲 Pending` to `✅ Done`.
@@ -35,7 +42,7 @@ Update the `/implement-service` command description to include the doc step:
 | `/implement-service <name>` | Full pipeline: implement → test → review → QA → docs |
 ```
 
-## Task 2 — Create examples/<service>/README.md
+## Task 3 — Create examples/<service>/README.md
 
 Create the file `examples/<service>/README.md` with runnable `grpcurl` examples for every RPC defined in the proto.
 
@@ -84,6 +91,7 @@ grpcurl -plaintext \
 
 ## Definition of done
 
+- [ ] CLAUDE.md Services table updated — service marked ✅ Done
 - [ ] README.md Scope & Roadmap updated — service marked ✅ Done
 - [ ] README.md Development Workflow — doc-writer agent listed, command description updated
 - [ ] `examples/<service>/README.md` created with all RPCs covered

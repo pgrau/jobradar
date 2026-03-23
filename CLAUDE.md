@@ -12,7 +12,7 @@ Real-time job market intelligence platform. Go 1.26, gRPC microservices, Kafka, 
 |---|---|---|
 | `embedder` | gRPC | ✅ Done — canonical reference |
 | `llm-service` | gRPC | 🔲 Pending |
-| `rag-service` | gRPC | 🔲 Pending |
+| `rag-service` | gRPC | ✅ Done |
 | `auth` | REST (JWT) | 🔲 Pending |
 | `fetcher` | Kafka producer | 🔲 Pending |
 | `scorer` | Kafka consumer + gRPC | 🔲 Pending |
