@@ -4,15 +4,20 @@
 
 .DEFAULT_GOAL := help
 .PHONY: help cluster-up cluster-down cluster-status proto proto-clean build \
-        build-service deploy-infra deploy-observability dev dev-run \
-        dev-service dev-delete test test-unit test-integration \
-        test-coverage test-service lint fmt vet tidy clean
+        build-service migrate-up migrate-down migrate-version \
+        deploy-infra deploy-observability dev dev-run \
+        dev-service dev-delete port-forward-infra port-forward-stop \
+        test test-unit test-integration test-coverage test-service \
+        lint fmt vet tidy clean
 
 # ------------------------------------------------------------------------------
 # Configuration
 # ------------------------------------------------------------------------------
 include .env
 export
+
+# Expand ~ in KUBECONFIG
+KUBECONFIG := $(HOME)/.kube/config
 
 ENV       ?= local
 NAMESPACE := jobradar
@@ -83,6 +88,37 @@ build-service: ## Build a single service locally (make build-service SVC=embedde
 	@[ -n "$(SVC)" ] || (echo "✗ SVC is required. Usage: make build-service SVC=embedder" && exit 1)
 	go build -o bin/$(SVC) ./services/$(SVC)/cmd/...
 	@echo "✓ $(SVC) built"
+
+# ------------------------------------------------------------------------------
+# Database migrations
+# Requires: make port-forward-infra running (PostgreSQL on localhost:5432)
+# ------------------------------------------------------------------------------
+migrate-up: ## Build migrate image, load into kind and run migrations up
+	@echo "→ Building migrate image..."
+	docker build -t ghcr.io/pgrau/jobradar/migrate:latest 		-f db/migrate/Dockerfile .
+	kind load docker-image ghcr.io/pgrau/jobradar/migrate:latest --name $(CLUSTER)
+	@echo "→ Applying secret..."
+	kubectl apply -f k8s/manifests/migrations/secret.yaml -n $(NAMESPACE) --validate=false
+	@echo "→ Running migrations..."
+	kubectl delete job db-migrate -n $(NAMESPACE) 2>/dev/null || true
+	kubectl apply -f k8s/manifests/migrations/job.yaml -n $(NAMESPACE)
+	kubectl wait --for=condition=complete job/db-migrate -n $(NAMESPACE) --timeout=120s
+	kubectl logs job/db-migrate -n $(NAMESPACE)
+	@echo "✓ Migrations applied"
+
+migrate-down: ## Rollback last migration
+	@echo "→ Rolling back last migration..."
+	kubectl delete job db-migrate-down -n $(NAMESPACE) 2>/dev/null || true
+	kubectl create job db-migrate-down 		--image=ghcr.io/pgrau/jobradar/migrate:latest 		-n $(NAMESPACE) 		-- down
+	kubectl wait --for=condition=complete job/db-migrate-down -n $(NAMESPACE) --timeout=60s
+	kubectl logs job/db-migrate-down -n $(NAMESPACE)
+	@echo "✓ Migration rolled back"
+
+migrate-version: ## Show current migration version
+	kubectl delete job db-migrate-version -n $(NAMESPACE) 2>/dev/null || true
+	kubectl create job db-migrate-version 		--image=ghcr.io/pgrau/jobradar/migrate:latest 		-n $(NAMESPACE) 		-- version
+	kubectl wait --for=condition=complete job/db-migrate-version -n $(NAMESPACE) --timeout=60s
+	kubectl logs job/db-migrate-version -n $(NAMESPACE)
 
 # ------------------------------------------------------------------------------
 # Infrastructure
