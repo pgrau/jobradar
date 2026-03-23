@@ -327,14 +327,15 @@ Every service is built through a four-stage pipeline, each handled by a speciali
         ├─► service-implementer   code + initial tests + K8s manifests
         ├─► test-writer           fills coverage gaps (no implementation changes)
         ├─► code-reviewer         Go conventions, OTel, gRPC status codes, K8s security
-        └─► qa                    proto contract compliance, ADR compliance, domain rules
+        ├─► qa                    proto contract compliance, ADR compliance, domain rules
+        └─► doc-writer            README roadmap + grpcurl examples
 ```
 
 **Commands** (entry points, type `/` in Claude Code):
 
 | Command | Description |
 |---|---|
-| `/implement-service <name>` | Full pipeline: implement → test → review → QA |
+| `/implement-service <name>` | Full pipeline: implement → test → review → QA → docs |
 | `/review-service <name>` | Code review only, no implementation |
 | `/new-adr <title>` | Scaffold a new Architecture Decision Record |
 
@@ -346,6 +347,7 @@ Every service is built through a four-stage pipeline, each handled by a speciali
 | `test-writer` | Opus | Adds missing test coverage without touching implementation |
 | `code-reviewer` | Opus | Validates Go patterns, OTel, gRPC codes, K8s security context |
 | `qa` | Opus | Validates behaviour against proto contract, ADRs, and domain rules |
+| `doc-writer` | Opus | Updates README.md roadmap and creates grpcurl examples |
 
 **Skills** (`.claude/skills/`) — reusable scaffolds invoked by agents:
 
@@ -676,6 +678,7 @@ jobradar/
 | React frontend — job feed + search + trends | 🔲 Pending |
 | Full observability (LGTM + Langfuse) | 🔲 Pending |
 | Embedder service | ✅ Done |
+| RAG service (pgvector semantic search) | ✅ Done |
 
 ### v2
 

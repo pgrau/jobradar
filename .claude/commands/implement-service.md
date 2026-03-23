@@ -10,3 +10,4 @@ Implement the `$ARGUMENTS` service for JobRadar.
 4. Use the `qa` agent to validate behaviour against the proto contract, ADRs, and domain rules
 5. Fix any CRITICAL or MAJOR issues found
 6. Confirm `make test-service SVC=$ARGUMENTS` passes
+7. Use the `doc-writer` agent to update README.md and create grpcurl examples
